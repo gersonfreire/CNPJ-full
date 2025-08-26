@@ -377,13 +377,20 @@ Essa operaçao pode levar vários minutos.
 
     cursorBD = conBD.cursor()
 
+    cursorBD.execute("SELECT name FROM sqlite_master WHERE type='table';")
+    tables = {row[0] for row in cursorBD.fetchall()}
+
     for indice in INDICES:
         nome_indice = PREFIXO_INDICE + indice[0]
+        nome_tabela = indice[1]
 
-        sql_stmt = 'CREATE INDEX {} ON {} ({});'.format(nome_indice, indice[1], indice[2])
-        cursorBD.execute(sql_stmt)
+        if nome_tabela in tables:
+            sql_stmt = 'CREATE INDEX {} ON {} ({});'.format(nome_indice, nome_tabela, indice[2])
+            cursorBD.execute(sql_stmt)
 
-        print(u'Index {} criado.'.format(nome_indice))
+            print(u'Index {} criado.'.format(nome_indice))
+        else:
+            print(u'Aviso: Tabela "{}" não encontrada. O índice {} não será criado.'.format(nome_tabela, nome_indice))
 
     print(u'Indices criados com sucesso.')
 
