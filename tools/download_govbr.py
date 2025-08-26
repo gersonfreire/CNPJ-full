@@ -3,6 +3,12 @@
     Download de arquivos do portal da transparência do governo brasileiro
     
     https://dadosabertos.rfb.gov.br/
+    
+    https://arquivos.receitafederal.gov.br/dados/cnpj/dados_abertos_cnpj/?C=N;O=D
+    
+    https://github.com/gersonfreire/CNPJ-full
+    
+    https://dados.gov.br/dados/conjuntos-dados
 """
 
 # add python parent dir to sys.path
