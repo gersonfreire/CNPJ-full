@@ -1,3 +1,8 @@
+Processando arquivo: tools\downloads_cnpj\Socios9.zip]
+Bloco 11: até linha 2200000. [Emps:0|Socios:0|CNAEs:0]
+Conversao concluida. Validando quantidades:
+Total de registros de empresas: 0 ok
+Total de registros de socios: 0 ok
 Total de registros de CNAEs: 0 ok
 
 Arquivo SQLITE gerado: output\CNPJ_full.db
@@ -7,12 +12,11 @@ OBS: Uso de índices altamente recomendado!
 Criando índices...
 Essa operaçao pode levar vários minutos.
 
-Traceback (most recent call last):
-  File "h:\dev\rfb\CNPJ-full\cnpj.py", line 472, in <module>
-    main()
-  File "h:\dev\rfb\CNPJ-full\cnpj.py", line 468, in main
-    cnpj_index(output_path)
-  File "h:\dev\rfb\CNPJ-full\cnpj.py", line 384, in cnpj_index
-    cursorBD.execute(sql_stmt)
-sqlite3.OperationalError: no such table: main.empresas
-(.venv) PS H:\dev\rfb\CNPJ-full>
+Aviso: Tabela "empresas" não encontrada. O índice ix_empresas_cnpj não será criado.
+Aviso: Tabela "empresas" não encontrada. O índice ix_empresas_raiz não será criado.
+Aviso: Tabela "socios" não encontrada. O índice ix_socios_cnpj não será criado.
+Aviso: Tabela "socios" não encontrada. O índice ix_socios_cpf_cnpj não será criado.
+Aviso: Tabela "socios" não encontrada. O índice ix_socios_nome não será criado.
+Aviso: Tabela "cnaes_secundarios" não encontrada. O índice ix_cnaes_cnpj não será criado.
+Indices criados com sucesso.
+Processamento concluido em 2025-08-26 20:29:33.364811
