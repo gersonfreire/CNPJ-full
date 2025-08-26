@@ -1,0 +1,18 @@
+Total de registros de CNAEs: 0 ok
+
+Arquivo SQLITE gerado: output\CNPJ_full.db
+OBS: Uso de índices altamente recomendado!
+
+
+Criando índices...
+Essa operaçao pode levar vários minutos.
+
+Traceback (most recent call last):
+  File "h:\dev\rfb\CNPJ-full\cnpj.py", line 472, in <module>
+    main()
+  File "h:\dev\rfb\CNPJ-full\cnpj.py", line 468, in main
+    cnpj_index(output_path)
+  File "h:\dev\rfb\CNPJ-full\cnpj.py", line 384, in cnpj_index
+    cursorBD.execute(sql_stmt)
+sqlite3.OperationalError: no such table: main.empresas
+(.venv) PS H:\dev\rfb\CNPJ-full>
