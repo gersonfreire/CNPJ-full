@@ -9,6 +9,12 @@
     https://github.com/gersonfreire/CNPJ-full
     
     https://dados.gov.br/dados/conjuntos-dados
+    
+    https://loja.serpro.gov.br/vioapidecodifica
+    
+    https://apicenter.estaleiro.serpro.gov.br/documentacao/vio-decode/pt/quick_start/#1-primeiro-passo-obtenha-consumer-key-e-consumer-secret
+    
+    https://cliente.serpro.gov.br/e-commerce/pedido/444072/cliente
 """
 
 # add python parent dir to sys.path
