@@ -4,8 +4,11 @@ import os
 import zipfile
 import glob
 
+# Get the directory where the script is located
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
 # Define the source and destination directories
-downloads_dir = "downloads_cnpj"
+downloads_dir = os.path.join(script_dir, "downloads_cnpj")
 unzip_dir = os.path.join(downloads_dir, "unziped")
 
 # Create the destination directory if it doesn't exist
