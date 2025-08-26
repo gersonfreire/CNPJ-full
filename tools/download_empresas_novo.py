@@ -16,24 +16,52 @@ arquivos = [
     "Socios6.zip", "Socios7.zip", "Socios8.zip", "Socios9.zip"
 ]
 
+# Get the directory where the script is located
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
 # Pasta onde os arquivos serão salvos
-pasta_destino = "downloads_cnpj"
+pasta_destino = os.path.join(script_dir, "downloads_cnpj")
 os.makedirs(pasta_destino, exist_ok=True)
 
-# Função para baixar um arquivo
-def baixar_arquivo(nome_arquivo):
-    url = base_url + nome_arquivo
+# Initialize flags
+overwrite_all = False
+skip_all = False
+
+# Loop para baixar todos os arquivos
+for nome_arquivo in arquivos:
     caminho = os.path.join(pasta_destino, nome_arquivo)
+
+    # Check if file exists and what to do
+    if os.path.exists(caminho):
+        if skip_all:
+            print(f"Skipping '{nome_arquivo}' (skip all enabled).")
+            continue
+
+        if not overwrite_all:
+            prompt = f"'{nome_arquivo}' already exists. Overwrite? (y/n/a/s) (yes/no/all/skip all): "
+            answer = input(prompt).lower()
+
+            if answer == 'a':
+                overwrite_all = True
+            elif answer == 's':
+                skip_all = True
+                print(f"Skipping '{nome_arquivo}' and all subsequent existing files.")
+                continue
+            elif answer != 'y': # This covers 'n' and anything else
+                print(f"Skipping '{nome_arquivo}'.")
+                continue
+
+    # Download the file
+    url = base_url + nome_arquivo
     print(f"Baixando: {nome_arquivo}")
-    resposta = requests.get(url, stream=True)
-    if resposta.status_code == 200:
+    try:
+        resposta = requests.get(url, stream=True)
+        resposta.raise_for_status()  # Raise an exception for bad status codes
         with open(caminho, "wb") as f:
             for chunk in resposta.iter_content(chunk_size=8192):
                 f.write(chunk)
         print(f"✔️ Download concluído: {nome_arquivo}")
-    else:
-        print(f"❌ Falha ao baixar: {nome_arquivo} (Status {resposta.status_code})")
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Falha ao baixar: {nome_arquivo} ({e})")
 
-# Loop para baixar todos os arquivos
-for arquivo in arquivos:
-    baixar_arquivo(arquivo)
+print("\nAll files have been processed.")
