@@ -405,59 +405,68 @@ Exemplos: python cnpj.py "data/F.K032001K.D81106D" sqlite "output"
 
 
 def main():
-
     num_argv = len(sys.argv)
-    if num_argv < 4:
+
+    # Default values
+    # input_path = os.path.join('tools', 'downloads_cnpj', 'unziped')
+    input_path = os.path.join('tools', 'downloads_cnpj')
+    tipo_output = 'sqlite'
+    output_path = 'output'
+    use_dir_logic = True
+    gera_index = True
+
+    if num_argv == 1:
+        print("No command-line arguments provided. Running with default settings.")
+        print(f"Input path: {input_path}")
+        print(f"Output type: {tipo_output}")
+        print(f"Output path: {output_path}")
+    elif num_argv < 4:
         help()
         sys.exit(-1)
-    else:
+    else:  # Parse arguments from command line
         input_path = sys.argv[1]
         tipo_output = sys.argv[2]
         output_path = sys.argv[3]
 
-        gera_index = True
+        # Check for optional args
+        optional_args = sys.argv[4:num_argv]
+        use_dir_logic = '--dir' in optional_args
+        gera_index = '--noindex' not in optional_args
+
+        # Error on unknown optional args
+        for arg in optional_args:
+            if arg not in ['--dir', '--noindex']:
+                print(f'ERRO: Argumento opcional inválido: {arg}')
+                help()
+                sys.exit(-1)
+
+    # --- Common logic for both default and command-line execution ---
+    if use_dir_logic:
+        input_list = glob.glob(os.path.join(input_path, '*.zip'))
+        if not input_list:
+            # caso nao ache zip, procura arquivos descompactados.
+            input_list = glob.glob(os.path.join(input_path, '*.L*'))
+        if not input_list:
+            # caso nem assim ache, indica erro.
+            print(f'ERRO: Nenhum arquivo válido (*.zip, *.L*) encontrado no diretório: {input_path}')
+            sys.exit(-1)
+        input_list.sort()
+    else:
         input_list = [input_path]
 
-        if num_argv > 4:
-            for opcional in sys.argv[4:num_argv]:
-                if (opcional == '--noindex'):
-                    gera_index = False
-
-                elif (opcional == '--dir'):
-                    input_list = glob.glob(os.path.join(input_path,'*.zip'))
-
-                    if not input_list:
-                        # caso nao ache zip, procura arquivos descompactados.
-                        input_list = glob.glob(os.path.join(input_path,'*.L*'))
-
-                    if not input_list:
-                        # caso nem assim ache, indica erro.
-                        print(u'ERRO: Nenhum arquivo válido encontrado no diretório!')
-                        sys.exit(-1)
-
-                    input_list.sort()
-
-                else:
-                    print(u'ERRO: Argumento opcional inválido.')
-                    help()
-                    sys.exit(-1)
-
-        if tipo_output not in ['csv','sqlite']:
-            print('''
+    if tipo_output not in ['csv', 'sqlite']:
+        print('''
 ERRO: tipo de output inválido. 
 Escolha um dos seguintes tipos de output: csv ou sqlite.
-            ''')
-            help()
+        ''')
+        help()
+        sys.exit(-1)
 
-        else:
-            print('Iniciando processamento em {}'.format(datetime.datetime.now()))
-
-            cnpj_full(input_list, tipo_output, output_path)
-
-            if (gera_index) and (tipo_output == 'sqlite'):
-                cnpj_index(output_path)
-
-            print('Processamento concluido em {}'.format(datetime.datetime.now()))
+    print('Iniciando processamento em {}'.format(datetime.datetime.now()))
+    cnpj_full(input_list, tipo_output, output_path)
+    if gera_index and tipo_output == 'sqlite':
+        cnpj_index(output_path)
+    print('Processamento concluido em {}'.format(datetime.datetime.now()))
 
 if __name__ == "__main__":
     main()
