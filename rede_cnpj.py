@@ -170,7 +170,8 @@ class RedeCNPJ:
                         for k, v in empresa.items():
                             self.G.nodes[id_pessoa_str][k] = v
 
-                    except:
+                    except Exception as e:
+                        '''DatabaseError("Execution failed on sql '\n                        SELECT *\n                        FROM empresas\n                        WHERE cnpj = '00000033530734'\n                    ': no such column: cnpj")'''
                         print('Empresa nao encontrada: {}'.format(id_pessoa_str))
                         self.G.remove_node(id_pessoa_str)
                         raise KeyError
