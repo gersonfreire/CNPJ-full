@@ -66,12 +66,13 @@ FILE_CONFIG = {
 def handle_cnaes(chunk, db_connection, if_exists_mode):
     """
     Extrai, normaliza e salva os CNAEs secundários de um chunk de estabelecimentos.
+    Retorna o número de registros de CNAE salvos.
     """
     cnaes_sec = chunk[['cnpj_basico', 'cnpj_ordem', 'cnpj_dv', 'cnae_fiscal_secundaria']].copy()
     cnaes_sec.dropna(subset=['cnae_fiscal_secundaria'], inplace=True)
 
     if cnaes_sec.empty:
-        return
+        return 0
 
     # Monta o CNPJ completo
     cnaes_sec['cnpj'] = cnaes_sec['cnpj_basico'].astype(str) + cnaes_sec['cnpj_ordem'].astype(str) + cnaes_sec['cnpj_dv'].astype(str)
@@ -86,7 +87,11 @@ def handle_cnaes(chunk, db_connection, if_exists_mode):
     cnaes_df = cnaes_df[cnaes_df['cnae'] != '']
 
     if not cnaes_df.empty:
+        num_records = len(cnaes_df)
         cnaes_df.to_sql(CNAES_SECUNDARIOS, db_connection, if_exists=if_exists_mode, index=False)
+        return num_records
+    
+    return 0
 
 def process_zip_files(files, config, db_connection, output_type):
     """
@@ -98,14 +103,17 @@ def process_zip_files(files, config, db_connection, output_type):
     dtypes = config['dtypes']
     handler_func_name = config['special_handler']
 
+    total_records_table = 0
+    total_records_handler = 0
+
     print(f'Iniciando processamento para a tabela: {table_name}')
     
-    # O primeiro bloco de dados de qualquer arquivo substitui a tabela. Os demais anexam.
     if_exists_mode = 'replace'
     cnaes_if_exists_mode = 'replace'
 
     for filepath in files:
         print(f'  Lendo arquivo: {os.path.basename(filepath)}')
+        records_in_file = 0
         try:
             reader = pd.read_csv(
                 filepath,
@@ -119,12 +127,17 @@ def process_zip_files(files, config, db_connection, output_type):
             )
 
             for i, chunk in enumerate(reader):
-                print(f'    Processando bloco {i+1}...', end='\r')
+                chunk_rows = len(chunk)
+                records_in_file += chunk_rows
+                total_records_table += chunk_rows
+                
+                print(f'    Registros lidos do arquivo: {records_in_file:,} | Total na tabela: {total_records_table:,}', end='\r')
 
                 # Aplica o handler especial se houver um
                 if handler_func_name:
-                    globals()[handler_func_name](chunk, db_connection, cnaes_if_exists_mode)
-                    cnaes_if_exists_mode = 'append' # Garante que o handler só use 'replace' uma vez
+                    records_written_handler = globals()[handler_func_name](chunk, db_connection, cnaes_if_exists_mode)
+                    total_records_handler += records_written_handler
+                    cnaes_if_exists_mode = 'append'
 
                 # Converte os tipos de dados
                 for col, dtype in dtypes.items():
@@ -135,13 +148,18 @@ def process_zip_files(files, config, db_connection, output_type):
                 if output_type == 'sqlite':
                     chunk.to_sql(table_name, db_connection, if_exists=if_exists_mode, index=False)
                 
-                if_exists_mode = 'append' # Garante que apenas o primeiro bloco substitua a tabela
+                if_exists_mode = 'append'
             
-            print(f'    Arquivo {os.path.basename(filepath)} concluído.{" " * 20}')
+            print(f'    Arquivo {os.path.basename(filepath)} concluído. {records_in_file:,} registros processados.{" " * 20}')
 
         except Exception as e:
             print(f'\nERRO ao processar o arquivo {filepath}: {e}')
-    print(f'Processamento finalizado para a tabela: {table_name}\n')
+            
+    print(f'Processamento finalizado para a tabela: {table_name}')
+    print(f'  -> Total de registros gravados: {total_records_table:,}')
+    if handler_func_name:
+        print(f'  -> Total de registros de CNAE secundário gravados: {total_records_handler:,}')
+    print('')
 
 def cnpj_index(output_path):
     """Cria índices no banco de dados para otimizar as consultas."""
