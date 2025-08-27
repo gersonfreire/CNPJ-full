@@ -113,8 +113,7 @@ No caso de pessoa fisica, informar cpf seguido imediatamente do nome (ex: "***12
 
             print('Consulta finalizada. Verifique o(s) arquivo(s) de saida na pasta "{}".'.format(path_output))
 
-        except Exception as e:
-            '''(.venv) PS H:\dev\rfb\CNPJ-full> & H:/dev/rfb/CNPJ-full/.venv/Scripts/python.exe h:/dev/rfb/CNPJ-full/conAttributeError("'DataFrame' object has no attribute 'append'")'''            
+        except Exception as e:           
             print('Um erro ocorreu:\n{}'.format(e))
         finally:
             conBD.close()
@@ -173,7 +172,7 @@ def main():
     )
     parser.add_argument(
         '--item',
-        default='33530734',
+        default='33530734000131',
         help='Item a ser procurado (CNPJ, nome, CPF, etc.) ou caminho para o arquivo de entrada. (Padrão: 33530734000131)'
     )
     parser.add_argument(
