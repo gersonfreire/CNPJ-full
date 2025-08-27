@@ -45,7 +45,8 @@ def consulta(tipo_consulta, objeto_consulta, qualificacoes, path_BD, nivel_max, 
                 os.mkdir(path_output)
 
             if csv:
-                df_nodes = pd.DataFrame(columns=colunas_csv).append(rede.dataframe_pessoas(), sort=False)
+                # pandas.DataFrame.append was removed in pandas 2.0; use pd.concat instead
+                df_nodes = pd.concat([pd.DataFrame(columns=colunas_csv), rede.dataframe_pessoas()], sort=False)
 
                 if len(df_nodes) > 0:
                     df_nodes[colunas_csv].to_csv(os.path.join(path_output, 'pessoas.csv'), index_label='id', sep=csv_sep)
