@@ -2,6 +2,7 @@ import os
 import sys
 import json
 import subprocess
+import argparse
 
 import pandas as pd
 import sqlite3
@@ -122,26 +123,21 @@ No caso de pessoa fisica, informar cpf seguido imediatamente do nome (ex: "***12
 
 def consulta_item(rede, tipo_item, item):
     if tipo_item == 'cnpj':
-        #print('Consultando CNPJ: {}'.format(item))
         rede.insere_pessoa(1, item.replace('.','').replace('/','').replace('-','').zfill(14))
 
     elif tipo_item == 'nome_socio':
-        #print('Consultando socios com nome: {}'.format(item))
         rede.insere_com_cpf_ou_nome(nome=item.upper())
 
     elif tipo_item == 'cpf':
         cpf = mascara_cpf(item.replace('.','').replace('-',''))
-        #print('Consultando socios com cpf (mascarado): {}.'.format(cpf))
         rede.insere_com_cpf_ou_nome(cpf=cpf)
 
     elif tipo_item == 'cpf_nome':
         cpf = mascara_cpf(item[:11])
         nome = item[11:]
 
-        #print('Consultando socio com cpf (mascarado) {} e nome {}'.format(cpf,nome))
         rede.insere_pessoa(2,(cpf,nome))
 
-        # Se nao tem vinculo, nao existe socio com esse par cpf e nome
         if len(rede.dataframe_vinculos()) == 0:
             print('Nenhum socio encontrado com cpf "{}" e nome "{}"'.format(cpf, nome))
             rede.G.remove_node(cpf+nome)
@@ -155,130 +151,75 @@ def mascara_cpf(cpf_original):
 
     return cpf
 
-def help():
-    print('''
-Uso: python consulta.py <tipo consulta> <item|arquivo input> <caminho output> 
-     [--base <arquivo sqlite>] [--nivel <int>] 
-     [--csv] [--graphml] [--gexf] [--viz]
-
-Argumentos obrigatorios:
-  <tipo consulta>: Especifica o tipo de item a ser procurado.
-    Opcoes:
-    - cnpj: Busca empresa pelo numero do CNPJ
-    - nome_socio: Busca socios pelo nome completo
-    - cpf: Busca socios pelo numero do CPF 
-      Pode trazer varios socios, ja que apenas seis digitos sao armazenados.
-    - cpf_nome: Busca socios pelo numero do CPF seguido (sem espaco) do nome
-    - file: Arquivo que contem mais de um item a ser buscado.
-        Caso o arquivo tenha apenas um dado por linha, dado lido como CNPJ.
-        Caso o arquivo tenha mais de um dado separado por ";", o primeiro
-        indica um dos tipos acima, e o segundo o item a ser buscado.
-        (outro separador pode ser definido em SEP_CSV no config.py) 
-
-  <item|arquivo input>: Item a ser procurado, de acordo com <tipo consulta>. 
-  <caminho output>: Pasta onde serao salvos os arquivos gerados.
-
-Argumentos opcionais:
-  --base: Especifica o arquivo do banco de dados de CNPJ em formato sqlite.
-           Caso nao seja especificado, usa o PATH_BD definido no config.py
-
-  --nivel: Especifica a profundidade da consulta em número de pulos.
-            Ex: Caso seja especificado --nivel 1, busca o item e as
-            as empresas ou pessoas diretamente relacionadas.
-            Csaso nao seja especificado, usa o NIVEL_MAX_DEFAULT no config.py
-
-  --csv: Para gerar o resultado em arquivos csv.
-          Sao gerados dois arquivos, pessoas.csv e vinculos.csv.
-
-  --graphml: Para gerar o resultado em grafo no formato GRAPHML.
-
-  --gexf: Para gerar o resultado em grafo no formato GEXF. 
-           Pode ser aberto com o software gephi (https://gephi.org/)
-
-  --viz: Para gerar um HTML interativo com o resultado em grafo.
-          Para abrir automaticamente o navegador, informar o PATH_NAVEGADOR 
-          no config.py. Do contrario, basta abrir o arquivo grafo.html gerado 
-          em <caminho output>.
-
-  --conexoes: Especifica arquivo com pares de id de pessoas (cnpj ou cpf+nome),
-              um par por linha, para busca de conexoes (diretas ou indiretas) 
-              entre cada par. Gera arquivo conexoes.csv, com tres colunas. 
-              As duas primeiras com o par de pessoas e a terceira coluna
-              com a conexao entre elas, ou a string "SEM CONEXAO".
-
-Exemplos: 
-  python consulta.py cnpj 00000000000191 folder --nivel 1 --viz
-  python consulta.py file data/input.csv pasta --csv --gexf
-  python consulta.py nome_socio "FULANO SICRANO" output --graphml --viz
-    ''')
-
 def main():
-    NUM_ARGS_OBRIGATORIOS = 4
+    parser = argparse.ArgumentParser(
+        description='Consulta a base de dados de CNPJ da Receita Federal e gera redes de relacionamentos.',
+        formatter_class=argparse.RawTextHelpFormatter
+    )
 
-    # Defaults
-    csv = False
-    graphml = False
-    gexf = False
-    viz = False
-    nivel = config.NIVEL_MAX_DEFAULT
-    path_bd = config.PATH_BD
-    path_conexoes = None
+    parser.add_argument(
+        'tipo_consulta',
+        choices=['cnpj', 'nome_socio', 'cpf', 'cpf_nome', 'file'],
+        help='''Especifica o tipo de item a ser procurado:
+- cnpj: Busca empresa pelo numero do CNPJ.
+- nome_socio: Busca socios pelo nome completo.
+- cpf: Busca socios pelo numero do CPF (pode trazer varios socios).
+- cpf_nome: Busca socios pelo CPF seguido do nome (sem espaco).
+- file: Busca itens a partir de um arquivo de entrada.
+'''
+    )
+    parser.add_argument(
+        'item',
+        help='Item a ser procurado (CNPJ, nome, CPF, etc.) ou caminho para o arquivo de entrada (para tipo_consulta="file").'
+    )
+    parser.add_argument(
+        'output_path',
+        help='Pasta onde serao salvos os arquivos gerados.'
+    )
 
-    # python consulta.py <tipo consulta> <item|arquivo input> <caminho output> 
-    # [--base <arquivo sqlite>] [--nivel <int>] [--csv] [--graphml] [--gexf] [--viz]
-    num_argv = len(sys.argv)
-    if num_argv < NUM_ARGS_OBRIGATORIOS:
-        help()
-        sys.exit(-1)
-    else:
-        tipo_consulta = sys.argv[1]
-        objeto_consulta = sys.argv[2]
-        output_path = sys.argv[3]
+    parser.add_argument(
+        '--base',
+        default=config.PATH_BD,
+        help=f'Caminho para o arquivo de banco de dados SQLite. Padrao: {config.PATH_BD} (definido em config.py)'
+    )
+    parser.add_argument(
+        '--nivel',
+        type=int,
+        default=config.NIVEL_MAX_DEFAULT,
+        help=f'Profundidade da consulta em "pulos" na rede. Padrao: {config.NIVEL_MAX_DEFAULT} (definido em config.py)'
+    )
+    parser.add_argument(
+        '--conexoes',
+        help='Caminho para o arquivo com pares de IDs para buscar conexoes entre eles.'
+    )
 
-        if num_argv > NUM_ARGS_OBRIGATORIOS:
-            i_argv = NUM_ARGS_OBRIGATORIOS
-            while i_argv < num_argv:
-                opcional = sys.argv[i_argv]
+    parser.add_argument('--csv', action='store_true', help='Gerar resultado em arquivos CSV (pessoas.csv, vinculos.csv).')
+    parser.add_argument('--graphml', action='store_true', help='Gerar resultado em formato GraphML.')
+    parser.add_argument('--gexf', action='store_true', help='Gerar resultado em formato GEXF (para Gephi).')
+    parser.add_argument('--viz', action='store_true', help='Gerar uma visualizacao HTML interativa (grafo.html).')
 
-                if opcional == '--base':
-                    path_bd = sys.argv[i_argv+1]
-                    i_argv += 2
-                elif opcional == '--nivel':
-                    nivel = int(sys.argv[i_argv+1])
-                    i_argv += 2
-                elif opcional == '--csv':
-                    csv = True
-                    i_argv += 1
-                elif opcional == '--graphml':
-                    graphml = True
-                    i_argv += 1
-                elif opcional == '--gexf':
-                    gexf = True
-                    i_argv += 1
-                elif opcional == '--viz':
-                    viz = True
-                    i_argv += 1
-                elif opcional == '--conexoes':
-                    path_conexoes = sys.argv[i_argv+1]
-                    i_argv += 2
-                else:
-                    print('Parametro opcional invalido: {}'.format(opcional))
-                    i_argv += 1
+    args = parser.parse_args()
 
-        # Caso nenhum tipo de saida tenha sido selecionado, gera csv como default
-        if not (csv+graphml+gexf+viz):
-            csv = True
+    generate_csv = args.csv
+    if not any([args.csv, args.graphml, args.gexf, args.viz]):
+        print("Nenhum formato de saida especificado. Usando --csv como padrao.")
+        generate_csv = True
 
-        consulta(tipo_consulta, objeto_consulta, 
-                 config.QUALIFICACOES, 
-                 path_bd, 
-                 nivel, 
-                 output_path, 
-                 csv=csv, colunas_csv=config.COLUNAS_CSV, csv_sep=config.SEP_CSV,
-                 graphml=graphml,
-                 gexf=gexf,
-                 viz=viz,
-                 path_conexoes=path_conexoes)
+    consulta(
+        tipo_consulta=args.tipo_consulta,
+        objeto_consulta=args.item,
+        qualificacoes=config.QUALIFICACOES,
+        path_BD=args.base,
+        nivel_max=args.nivel,
+        path_output=args.output_path,
+        csv=generate_csv,
+        colunas_csv=config.COLUNAS_CSV,
+        csv_sep=config.SEP_CSV,
+        graphml=args.graphml,
+        gexf=args.gexf,
+        viz=args.viz,
+        path_conexoes=args.conexoes
+    )
 
 if __name__ == '__main__':
     main()
