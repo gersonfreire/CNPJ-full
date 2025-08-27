@@ -186,3 +186,4 @@ pyrightconfig.json
 
 npj/
 output/CNPJ_full.db
+output/CNPJ_full.db-journal
