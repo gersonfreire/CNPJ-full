@@ -100,6 +100,9 @@ class RedeCNPJ:
 
     def _buscar_participacoes_societarias(self, tipo_pessoa, id_pessoa, nivel, origem):
         """Busca empresas onde a pessoa (física ou jurídica) é sócia."""
+        # Determina o identificador do nó de origem (source) na rede
+        source_node = id_pessoa if tipo_pessoa == 1 else (id_pessoa[0] + id_pessoa[1])
+
         if tipo_pessoa == 1: # PJ
             query = f"SELECT * FROM socios WHERE cnpj_cpf_socio = '{id_pessoa}'"
         else: # PF
@@ -116,7 +119,7 @@ class RedeCNPJ:
                 cnpj_matriz = self._get_full_cnpj(df_matriz.iloc[0])
                 if cnpj_matriz != origem:
                     self._explorar_vinculos(1, cnpj_matriz, nivel + 1, origem=id_pessoa)
-                    self.G.add_edge(id_node, cnpj_matriz, tipo='socio', **participacao.to_dict())
+                    self.G.add_edge(source_node, cnpj_matriz, tipo='socio', **participacao.to_dict())
 
     def _adicionar_vinculo_socio(self, socio, cnpj_empresa, nivel, origem):
         """Adiciona um nó de sócio e o conecta à empresa."""
