@@ -5,6 +5,11 @@ import subprocess
 
 import pandas as pd
 import sqlite3
+'''Exception has occurred: ModuleNotFoundError
+No module named 'networkx'
+  File "H:\dev\rfb\CNPJ-full\consulta_ori.py", line 8, in <module>
+    import networkx as nx
+ModuleNotFoundError: No module named 'networkx'''
 import networkx as nx
 
 import config
