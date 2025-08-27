@@ -176,7 +176,7 @@ def main():
     )
     parser.add_argument(
         '--item',
-        default='33530734',
+        default='33530734000131',
         help='Item a ser procurado (CNPJ, nome, CPF, etc.) ou caminho para o arquivo de entrada. (Padrão: 33530734000131)'
     )
     parser.add_argument(
