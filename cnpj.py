@@ -184,10 +184,16 @@ def cnpj_index(output_path):
 
 def help():
     print('''
-Uso: python cnpj.py <path_input> <output:sqlite|csv> <path_output> [--noindex]
-O script agora processa arquivos .zip (Empresas*.zip, Socios*.zip, etc.) 
+Uso: python cnpj.py [<path_input> <output:sqlite> <path_output>] [--noindex]
+
+O script processa arquivos .zip (Empresas*.zip, Socios*.zip, etc.) 
 encontrados no diretório de entrada, assumindo que eles contêm arquivos CSV
 delimitados por ponto e vírgula, conforme o novo layout da Receita Federal.
+
+Se nenhum argumento for fornecido, os seguintes valores padrão serão usados:
+  - Diretório de entrada: tools/downloads_cnpj
+  - Formato de saída: sqlite
+  - Diretório de saída: output
 
 Argumentos:
   <path_input>   : Diretório contendo os arquivos .zip da RFB.
@@ -195,20 +201,33 @@ Argumentos:
   <path_output>  : Diretório onde o banco de dados SQLite será salvo.
   [--noindex]    : Opcional. Não gera índices no banco de dados ao final.
 
-Exemplo:
+Exemplo de uso com argumentos:
   python cnpj.py "dados_rfb" sqlite "output"
+
+Exemplo de uso com valores padrão:
+  python cnpj.py
 ''')
 
 def main():
     # --- Leitura dos Argumentos ---
-    if len(sys.argv) < 4:
+    if len(sys.argv) == 1:
+        # Nenhum argumento fornecido, usar defaults
+        input_path = os.path.join('tools', 'downloads_cnpj')
+        tipo_output = 'sqlite'
+        output_path = 'output'
+        gera_index = True
+        print("Nenhum argumento fornecido. Usando valores padrão:")
+        print(f"  - Diretório de entrada: {input_path}")
+        print(f"  - Tipo de saída: {tipo_output}")
+        print(f"  - Diretório de saída: {output_path}\n")
+    elif len(sys.argv) < 4:
         help()
         sys.exit(-1)
-
-    input_path = sys.argv[1]
-    tipo_output = sys.argv[2]
-    output_path = sys.argv[3]
-    gera_index = '--noindex' not in sys.argv
+    else:
+        input_path = sys.argv[1]
+        tipo_output = sys.argv[2]
+        output_path = sys.argv[3]
+        gera_index = '--noindex' not in sys.argv
 
     if tipo_output != 'sqlite':
         print("ERRO: Apenas o tipo de output 'sqlite' é suportado nesta versão.")
@@ -218,6 +237,7 @@ def main():
     if not os.path.isdir(input_path):
         print(f'ERRO: O diretório de entrada não foi encontrado: {input_path}')
         sys.exit(-1)
+
 
     # --- Lógica Principal ---
     print(f'Iniciando processamento em {datetime.datetime.now()}')
