@@ -113,6 +113,10 @@ No caso de pessoa fisica, informar cpf seguido imediatamente do nome (ex: "***12
             print('Consulta finalizada. Verifique o(s) arquivo(s) de saida na pasta "{}".'.format(path_output))
 
         except Exception as e:
+            '''(.venv) PS H:\dev\rfb\CNPJ-full> & H:/dev/rfb/CNPJ-full/.venv/Scripts/python.exe h:/dev/rfb/CNPJ-full/consulta.py
+Nenhum formato de saida especificado. Usando --csv como padrao.
+Empresa nao encontrada: 33530734000131
+Um erro ocorreu:'''            
             print('Um erro ocorreu:\n{}'.format(e))
         finally:
             conBD.close()
