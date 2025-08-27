@@ -47,7 +47,6 @@ def consulta(tipo_consulta, objeto_consulta, qualificacoes, path_BD, nivel_max, 
             if csv:
                 df_nodes = pd.DataFrame(columns=colunas_csv).append(rede.dataframe_pessoas(), sort=False)
 
-                # Verifica se teve ao menos um registro encontrado
                 if len(df_nodes) > 0:
                     df_nodes[colunas_csv].to_csv(os.path.join(path_output, 'pessoas.csv'), index_label='id', sep=csv_sep)
 
@@ -158,7 +157,9 @@ def main():
     )
 
     parser.add_argument(
-        'tipo_consulta',
+        '--tipo-consulta',
+        dest='tipo_consulta',
+        default='cnpj',
         choices=['cnpj', 'nome_socio', 'cpf', 'cpf_nome', 'file'],
         help='''Especifica o tipo de item a ser procurado:
 - cnpj: Busca empresa pelo numero do CNPJ.
@@ -166,21 +167,24 @@ def main():
 - cpf: Busca socios pelo numero do CPF (pode trazer varios socios).
 - cpf_nome: Busca socios pelo CPF seguido do nome (sem espaco).
 - file: Busca itens a partir de um arquivo de entrada.
-'''
+(Padrão: cnpj)'''
     )
     parser.add_argument(
-        'item',
-        help='Item a ser procurado (CNPJ, nome, CPF, etc.) ou caminho para o arquivo de entrada (para tipo_consulta="file").'
+        '--item',
+        default='33530734000131',
+        help='Item a ser procurado (CNPJ, nome, CPF, etc.) ou caminho para o arquivo de entrada. (Padrão: 33530734000131)'
     )
     parser.add_argument(
-        'output_path',
-        help='Pasta onde serao salvos os arquivos gerados.'
+        '--output-path',
+        dest='output_path',
+        default='output',
+        help='Pasta onde serao salvos os arquivos gerados. (Padrão: output)'
     )
 
     parser.add_argument(
         '--base',
-        default=config.PATH_BD,
-        help=f'Caminho para o arquivo de banco de dados SQLite. Padrao: {config.PATH_BD} (definido em config.py)'
+        default='H:\\dev\\rfb\\CNPJ-full\\output\\CNPJ_full.db',
+        help='Caminho para o arquivo de banco de dados SQLite. Padrão: H:\\dev\\rfb\\CNPJ-full\\output\\CNPJ_full.db'
     )
     parser.add_argument(
         '--nivel',
