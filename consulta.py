@@ -45,11 +45,7 @@ def consulta(tipo_consulta, objeto_consulta, qualificacoes, path_BD, nivel_max, 
                 os.mkdir(path_output)
 
             if csv:
-                # pandas.DataFrame.append was removed in pandas 2.0. Use pd.concat instead.
-                df_nodes = pd.concat(
-                    [pd.DataFrame(columns=colunas_csv), rede.dataframe_pessoas()],
-                    sort=False
-                )
+                df_nodes = pd.DataFrame(columns=colunas_csv).append(rede.dataframe_pessoas(), sort=False)
 
                 if len(df_nodes) > 0:
                     df_nodes[colunas_csv].to_csv(os.path.join(path_output, 'pessoas.csv'), index_label='id', sep=csv_sep)
@@ -176,7 +172,7 @@ def main():
     )
     parser.add_argument(
         '--item',
-        default='33530734000131',
+        default='33530734',
         help='Item a ser procurado (CNPJ, nome, CPF, etc.) ou caminho para o arquivo de entrada. (Padrão: 33530734000131)'
     )
     parser.add_argument(
