@@ -49,7 +49,11 @@ def consulta(tipo_consulta, objeto_consulta, qualificacoes, path_BD, nivel_max, 
                 os.mkdir(path_output)
 
             if csv:
-                df_nodes = pd.DataFrame(columns=colunas_csv).append(rede.dataframe_pessoas(), sort=False)
+                # pandas.DataFrame.append was removed in pandas 2.0. Use pd.concat instead.
+                df_nodes = pd.concat(
+                    [pd.DataFrame(columns=colunas_csv), rede.dataframe_pessoas()],
+                    sort=False
+                )
 
                 # Verifica se teve ao menos um registro encontrado
                 if len(df_nodes) > 0:
