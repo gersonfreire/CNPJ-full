@@ -1,0 +1,7 @@
+fastapi
+uvicorn[standard]
+pydantic[dotenv]
+sqlalchemy
+pandas
+networkx
+python-multipart
