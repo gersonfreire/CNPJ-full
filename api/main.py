@@ -40,6 +40,5 @@ if __name__ == "__main__":
         host=settings.API_HOST,
         port=settings.API_PORT,
         reload=settings.API_RELOAD,
-        debug=settings.API_DEBUG,
         **ssl_params
     )

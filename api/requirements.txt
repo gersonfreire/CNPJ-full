@@ -1,6 +1,7 @@
 fastapi
 uvicorn[standard]
-pydantic[dotenv]
+pydantic
+pydantic-settings
 sqlalchemy
 pandas
 networkx
