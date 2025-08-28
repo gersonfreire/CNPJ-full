@@ -3,3 +3,7 @@ numpy
 numexpr
 python-dotenv
 requests
+sqlalchemy
+pyodbc
+
+networkx

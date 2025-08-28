@@ -3,12 +3,12 @@ import os
 import glob
 import sys
 import datetime
-import sqlite3
 import pandas as pd
+from sqlalchemy import create_engine, text
+from dotenv import load_dotenv
 
 # --- CONFIGURACOES GERAIS ---
 
-NOME_ARQUIVO_SQLITE = 'CNPJ_full.db'
 CHUNKSIZE = 250000
 ENCODING = 'latin1' # Encoding comumente usado em dados governamentais brasileiros
 
@@ -21,8 +21,7 @@ SOCIOS = 'socios'
 SIMPLES = 'simples'
 CNAES_SECUNDARIOS = 'cnaes_secundarios'
 
-# Definição de colunas baseada no PDF "Novo Layout para os DADOS ABERTOS do CNPJ"
-# Nomes em minúsculo para seguir a convenção do script original.
+# Definição de colunas
 EMPRESAS_COLS = ['cnpj_basico', 'razao_social', 'natureza_juridica', 'qualificacao_responsavel', 'capital_social', 'porte_empresa', 'ente_federativo_responsavel']
 ESTABELECIMENTOS_COLS = ['cnpj_basico', 'cnpj_ordem', 'cnpj_dv', 'identificador_matriz_filial', 'nome_fantasia', 'situacao_cadastral', 'data_situacao_cadastral', 'motivo_situacao_cadastral', 'nome_cidade_exterior', 'pais', 'data_inicio_atividade', 'cnae_fiscal_principal', 'cnae_fiscal_secundaria', 'tipo_logradouro', 'logradouro', 'numero', 'complemento', 'bairro', 'cep', 'uf', 'municipio', 'ddd_1', 'telefone_1', 'ddd_2', 'telefone_2', 'ddd_fax', 'fax', 'email', 'situacao_especial', 'data_situacao_especial']
 SOCIOS_COLS = ['cnpj_basico', 'identificador_socio', 'nome_socio_razao_social', 'cnpj_cpf_socio', 'qualificacao_socio', 'data_entrada_sociedade', 'pais', 'representante_legal', 'nome_representante', 'qualificacao_representante_legal', 'faixa_etaria']
@@ -30,57 +29,47 @@ SIMPLES_COLS = ['cnpj_basico', 'opcao_pelo_simples', 'data_opcao_simples', 'data
 
 # Dtypes para colunas específicas
 EMPRESAS_DTYPES = {'capital_social': 'float64'}
-# Todos os outros serão lidos como string para evitar erros de tipo em dados sujos.
 
 # Mapeamento de prefixos de arquivo para configurações da tabela
-# Adicione outros arquivos como 'Paises', 'Municipios' aqui se necessário
 FILE_CONFIG = {
     'Empresas': {
         'table_name': EMPRESAS,
         'cols': EMPRESAS_COLS,
-        'dtypes': EMPRESAS_DTYPES,
-        'special_handler': None
+        'dtypes': {},
+        'special_handler': null
     },
     'Estabelecimentos': {
         'table_name': ESTABELECIMENTOS,
         'cols': ESTABELECIMENTOS_COLS,
         'dtypes': {},
-        'special_handler': 'handle_cnaes' # Função especial para tratar CNAEs secundários
+        'special_handler': 'handle_cnaes'
     },
     'Socios': {
         'table_name': SOCIOS,
         'cols': SOCIOS_COLS,
         'dtypes': {},
-        'special_handler': None
+        'special_handler': null
     },
     'Simples': {
         'table_name': SIMPLES,
         'cols': SIMPLES_COLS,
         'dtypes': {},
-        'special_handler': None
+        'special_handler': null
     }
 }
 
 # --- FUNCOES DE PROCESSAMENTO ---
 
-def handle_cnaes(chunk, db_connection, if_exists_mode):
-    """
-    Extrai, normaliza e salva os CNAEs secundários de um chunk de estabelecimentos.
-    Retorna o número de registros de CNAE salvos.
-    """
+def handle_cnaes(chunk, db_engine, if_exists_mode):
     cnaes_sec = chunk[['cnpj_basico', 'cnpj_ordem', 'cnpj_dv', 'cnae_fiscal_secundaria']].copy()
     cnaes_sec.dropna(subset=['cnae_fiscal_secundaria'], inplace=True)
 
     if cnaes_sec.empty:
         return 0
 
-    # Monta o CNPJ completo
     cnaes_sec['cnpj'] = cnaes_sec['cnpj_basico'].astype(str) + cnaes_sec['cnpj_ordem'].astype(str) + cnaes_sec['cnpj_dv'].astype(str)
-    
-    # Separa os CNAEs que vêm em formato de string separada por vírgula
     cnaes_sec = cnaes_sec.assign(cnae=cnaes_sec['cnae_fiscal_secundaria'].str.split(',')).explode('cnae')
     
-    # Limpa e seleciona as colunas finais
     cnaes_df = cnaes_sec[['cnpj', 'cnae']].copy()
     cnaes_df['cnae'] = cnaes_df['cnae'].str.strip()
     cnaes_df.dropna(subset=['cnae'], inplace=True)
@@ -88,16 +77,12 @@ def handle_cnaes(chunk, db_connection, if_exists_mode):
 
     if not cnaes_df.empty:
         num_records = len(cnaes_df)
-        cnaes_df.to_sql(CNAES_SECUNDARIOS, db_connection, if_exists=if_exists_mode, index=False)
+        cnaes_df.to_sql(CNAES_SECUNDARIOS, db_engine, if_exists=if_exists_mode, index=False)
         return num_records
     
     return 0
 
-def process_zip_files(files, config, db_connection, output_type):
-    """
-    Lê uma lista de arquivos ZIP, processa os CSVs internos em blocos
-    e os carrega na tabela SQLite especificada na configuração.
-    """
+def process_zip_files(files, config, db_engine):
     table_name = config['table_name']
     columns = config['cols']
     dtypes = config['dtypes']
@@ -133,20 +118,16 @@ def process_zip_files(files, config, db_connection, output_type):
                 
                 print(f'    Registros lidos do arquivo: {records_in_file:,} | Total na tabela: {total_records_table:,}', end='\r')
 
-                # Aplica o handler especial se houver um
                 if handler_func_name:
-                    records_written_handler = globals()[handler_func_name](chunk, db_connection, cnaes_if_exists_mode)
+                    records_written_handler = globals()[handler_func_name](chunk, db_engine, cnaes_if_exists_mode)
                     total_records_handler += records_written_handler
                     cnaes_if_exists_mode = 'append'
 
-                # Converte os tipos de dados
                 for col, dtype in dtypes.items():
                     if col in chunk.columns:
                         chunk[col] = pd.to_numeric(chunk[col].str.replace(',', '.'), errors='coerce').astype(dtype)
 
-                # Salva no banco de dados
-                if output_type == 'sqlite':
-                    chunk.to_sql(table_name, db_connection, if_exists=if_exists_mode, index=False)
+                chunk.to_sql(table_name, db_engine, if_exists=if_exists_mode, index=False)
                 
                 if_exists_mode = 'append'
             
@@ -161,11 +142,8 @@ def process_zip_files(files, config, db_connection, output_type):
         print(f'  -> Total de registros de CNAE secundário gravados: {total_records_handler:,}')
     print('')
 
-def cnpj_index(output_path):
+def cnpj_index(db_engine):
     """Cria índices no banco de dados para otimizar as consultas."""
-    # (Esta função foi corrigida na interação anterior para ser mais robusta)
-    
-    # Índices a serem criados: (nome_indice, tabela, coluna)
     INDICES = [
         ('empresas_cnpj_basico', EMPRESAS, 'cnpj_basico'),
         ('estabelecimentos_cnpj', ESTABELECIMENTOS, 'cnpj_basico, cnpj_ordem, cnpj_dv'),
@@ -175,123 +153,101 @@ def cnpj_index(output_path):
     ]
     PREFIXO_INDICE = 'ix_'
 
-    conBD = sqlite3.connect(os.path.join(output_path, NOME_ARQUIVO_SQLITE))
     print(u'Criando índices...\nEssa operacao pode levar vários minutos.')
-    cursorBD = conBD.cursor()
-
-    cursorBD.execute("SELECT name FROM sqlite_master WHERE type='table';")
-    tables = {row[0] for row in cursorBD.fetchall()}
-
-    for indice in INDICES:
-        nome_indice = PREFIXO_INDICE + indice[0]
-        nome_tabela = indice[1]
-        coluna = indice[2]
-
-        if nome_tabela in tables:
+    
+    with db_engine.connect() as connection:
+        for indice in INDICES:
+            nome_indice = PREFIXO_INDICE + indice[0]
+            nome_tabela = indice[1]
+            coluna = indice[2]
+            
             try:
-                sql_stmt = f'CREATE INDEX IF NOT EXISTS {nome_indice} ON {nome_tabela} ({coluna});'
-                cursorBD.execute(sql_stmt)
-                print(f'  Índice {nome_indice} criado na tabela {nome_tabela}.')
+                sql_stmt = text(f'CREATE INDEX {nome_indice} ON {nome_tabela} ({coluna});')
+                connection.execute(sql_stmt)
+                connection.commit()
+                print(f'  Índice {nome_indice} criado (ou já existia) na tabela {nome_tabela}.')
             except Exception as e:
-                print(f'  ERRO ao criar índice {nome_indice} na tabela {nome_tabela}: {e}')
-        else:
-            print(f'  Aviso: Tabela "{nome_tabela}" não encontrada. O índice {nome_indice} não será criado.')
-
+                print(f'  AVISO ao criar índice {nome_indice} na tabela {nome_tabela}: {e}')
+    
     print(u'Criação de índices concluída.')
-    conBD.close()
 
 def help():
     print('''
-Uso: python cnpj.py [<path_input> <output:sqlite> <path_output>] [--noindex]
+Uso: python cnpj_sql.py [<path_input>] [--noindex]
 
-O script processa arquivos .zip (Empresas*.zip, Socios*.zip, etc.) 
-encontrados no diretório de entrada, assumindo que eles contêm arquivos CSV
-delimitados por ponto e vírgula, conforme o novo layout da Receita Federal.
+Processa arquivos .zip da Receita Federal e os carrega em um banco de dados
+configurado via SQLAlchemy.
 
-Se nenhum argumento for fornecido, os seguintes valores padrão serão usados:
+A string de conexão do banco de dados deve ser informada na variável DATABASE_URL
+em um arquivo .env no mesmo diretório do script.
+
+Se nenhum argumento for fornecido, o seguinte valor padrão será usado:
   - Diretório de entrada: tools/downloads_cnpj
-  - Formato de saída: sqlite
-  - Diretório de saída: output
 
 Argumentos:
   <path_input>   : Diretório contendo os arquivos .zip da RFB.
-  <output:sqlite>: Formato de saída. Atualmente, apenas 'sqlite' é suportado.
-  <path_output>  : Diretório onde o banco de dados SQLite será salvo.
   [--noindex]    : Opcional. Não gera índices no banco de dados ao final.
 
-Exemplo de uso com argumentos:
-  python cnpj.py "dados_rfb" sqlite "output"
+Exemplo de .env:
+  DATABASE_URL="mssql+pyodbc://user:password@server/database?driver=ODBC+Driver+17+for+SQL+Server"
 
-Exemplo de uso com valores padrão:
-  python cnpj.py
+Exemplo de uso:
+  python cnpj_sql.py "dados_rfb"
 ''')
 
 def main():
-    # --- Leitura dos Argumentos ---
-    if len(sys.argv) == 1:
-        # Nenhum argumento fornecido, usar defaults
-        input_path = os.path.join('tools', 'downloads_cnpj')
-        tipo_output = 'sqlite'
-        output_path = 'output'
-        gera_index = True
-        print("Nenhum argumento fornecido. Usando valores padrão:")
-        print(f"  - Diretório de entrada: {input_path}")
-        print(f"  - Tipo de saída: {tipo_output}")
-        print(f"  - Diretório de saída: {output_path}\n")
-    elif len(sys.argv) < 4:
+    load_dotenv()
+    
+    if len(sys.argv) > 1 and sys.argv[1] in ('-h', '--help'):
         help()
-        sys.exit(-1)
-    else:
-        input_path = sys.argv[1]
-        tipo_output = sys.argv[2]
-        output_path = sys.argv[3]
-        gera_index = '--noindex' not in sys.argv
+        sys.exit(0)
 
-    if tipo_output != 'sqlite':
-        print("ERRO: Apenas o tipo de output 'sqlite' é suportado nesta versão.")
-        help()
+    input_path = os.path.join('tools', 'downloads_cnpj')
+    if len(sys.argv) > 1 and not sys.argv[1].startswith('--'):
+        input_path = sys.argv[1]
+    else:
+        print("Nenhum diretório de entrada fornecido. Usando o padrão: 'tools/downloads_cnpj'")
+
+    gera_index = '--noindex' not in sys.argv
+
+    database_url = os.getenv('DATABASE_URL')
+    if not database_url:
+        print("ERRO: A variável de ambiente DATABASE_URL não está definida.")
+        print("Crie um arquivo .env com a string de conexão. Veja --help para um exemplo.")
         sys.exit(-1)
 
     if not os.path.isdir(input_path):
         print(f'ERRO: O diretório de entrada não foi encontrado: {input_path}')
         sys.exit(-1)
 
-
-    # --- Lógica Principal ---
     print(f'Iniciando processamento em {datetime.datetime.now()}')
     
-    if not os.path.exists(output_path):
-        os.makedirs(output_path)
+    try:
+        engine = create_engine(database_url)
+        with engine.connect() as connection:
+            print("Conexão com o banco de dados estabelecida com sucesso.")
+    except Exception as e:
+        print(f"ERRO: Não foi possível conectar ao banco de dados: {e}")
+        sys.exit(-1)
 
-    db_path = os.path.join(output_path, NOME_ARQUIVO_SQLITE)
-    # Remove o banco de dados antigo para garantir uma carga limpa
-    if os.path.exists(db_path):
-        os.remove(db_path)
-        print(f'Banco de dados antigo removido: {db_path}')
-
-    conBD = sqlite3.connect(db_path)
-
-    # Encontra todos os arquivos .zip no diretório de entrada
     all_zip_files = glob.glob(os.path.join(input_path, '*.zip'))
     if not all_zip_files:
         print(f'ERRO: Nenhum arquivo .zip encontrado em {input_path}')
         sys.exit(-1)
 
-    # Itera sobre a configuração e processa cada tipo de arquivo
     for file_prefix, config in FILE_CONFIG.items():
         files_to_process = [f for f in all_zip_files if os.path.basename(f).startswith(file_prefix)]
         files_to_process.sort()
 
         if files_to_process:
-            process_zip_files(files_to_process, config, conBD, tipo_output)
+            process_zip_files(files_to_process, config, engine)
         else:
             print(f'Nenhum arquivo encontrado para o prefixo: {file_prefix}. Pulando.')
 
-    conBD.close()
     print('Processamento de dados concluído.')
 
-    if gera_index and tipo_output == 'sqlite':
-        cnpj_index(output_path)
+    if gera_index:
+        cnpj_index(engine)
         
     print(f'Processamento concluído em {datetime.datetime.now()}')
 

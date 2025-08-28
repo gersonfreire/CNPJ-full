@@ -1,108 +1,84 @@
 # Dados Públicos CNPJ - Conversão para CSV/SQLITE e Consultas
-Utilitário em Python para carregar a base completa de CNPJ [disponibilizada pela Receita Federal](http://idg.receita.fazenda.gov.br/orientacao/tributaria/cadastros/cadastro-nacional-de-pessoas-juridicas-cnpj/dados-publicos-cnpj) (aprox. 85 GB) e transformá-la em arquivos csv ou sqlite para fácil consumo. Processa dados de empresas, sócios e CNAEs.
+
+Utilitário em Python para baixar e carregar a base completa de CNPJ [disponibilizada pela Receita Federal](http://200.152.38.155/CNPJ/) e transformá-la em um banco de dados SQLite para fácil consumo. Processa dados de empresas, estabelecimentos, sócios e Simples Nacional.
+
 Possibilita também fazer consultas de empresas ou sócios e gravar resultados em CSV ou em grafo de relacionamentos.
 
 ![Grafo](img/grafo.png?raw=true "Grafo")
 
-**ATENÇÃO!**
+## Requisitos
 
-A partir de março de 2021, a Receita Federal mudou completamente a forma de disponibilizar os dados públicos do CNPJ. O script de carga deste repositório ainda não foi atualizado para refletir estas alterações, e portanto não funcionará para os novos arquivos disponibilizados a partir desta data.
+### Python
+Versão 3.6 ou superior.
 
-A **boa notícia** é que agora os arquivos já estão sendo disponibilizados pela RF em formato CSV, o que, dependendo do seu caso, pode até dispensar o uso deste script.
-
-Os scripts deste repositório no entanto ainda assim serão atualizados para manter funcional a conversão dos dados para formato SQLite, assim como os scripts de consulta.
-
-# Conversão para CSV ou SQLITE
-
-A forma recomendada de fazer a carga atualmente é: salvar os múltiplos arquivos zip em uma pasta dedicada e executar:
-
-`python3 cnpj.py PASTA_COM_ZIPS sqlite PASTA_DE_SAIDA --dir`
-
-ou
-
-`python3 cnpj.py PASTA_COM_ZIPS csv PASTA_DE_SAIDA --dir`
-
-## Configurações prévias
-Para executar o script, é necessário que seu sistema contenha essas instalações:
-
-## Python
-Versão mais atual, caso não consiga executar usando somente o comando `python`. Para isso, execute no terminal (se estiver usando sistemas GNU/Linux derivados do Debian):
-
-` $ sudo apt upgrade python3`
-
-## Gerenciador de Pacotes do Python (Pip)
-A versão mais atual. Se estiver usando Python3:
-
-`$ python3 -m pip install --upgrade pip`
-
-## Instalar Pré-Requisitos:
-
+### Instalar Bibliotecas
+Antes de executar qualquer script, instale as dependências necessárias:
 `$ pip install -r requirements.txt`
 
-Esse comando instalará as seguintes bibliotecas:
+---
 
-#### Pandas
-A versão mais atual da biblioteca [Pandas](https://pandas.pydata.org) para Python. 
+## Modo Automatizado (Recomendado)
 
-#### NumPy
-A princípio, não é necessário. O script neste repositório usa funções da biblioteca [Pandas](https://pandas.pydata.org), que utiliza uma extensão de NumPy chamada [NumExpr](#numexpr). Então, **caso** seu terminal retorne erros por ausência do pacote [NumPy](https://pypi.org/project/numpy/), esse é o motivo. 
+Para baixar e processar os dados da Receita Federal de forma totalmente automática, utilize o script `executar_carga_completa.py`. Ele orquestra o download e a carga no banco de dados sem necessidade de intervenção.
 
-#### NumExpr
-O [Pandas](https://pandas.pydata.org) usa. É uma extensão que melhora a velocidade de análise no pacote [NumPy](#pacote-numpy).
+`python executar_carga_completa.py [argumentos_para_o_cnpj.py]`
 
+O script executará as duas etapas principais:
+1.  **Download:** Executa `tools/download_empresas_novo.py` para baixar todos os arquivos `.zip` de dados do site da RFB para a pasta `tools/downloads_cnpj`.
+2.  **Carga:** Executa `cnpj.py` para processar os arquivos baixados e criar o banco de dados SQLite.
 
-## Antes de executar
-Atente para o fato de que o arquivo de dados disponibilizado pela RF é muito grande. São aprox. 85 GB de arquivo texto descomprimido.
-Portanto, é bastante provável que seu computador dedique tempo considerável a essa execução, algo em torno de 2 ou 3 horas.
+Por padrão, `cnpj.py` usará a pasta `tools/downloads_cnpj` como entrada e salvará o banco `CNPJ_full.db` na pasta `output`.
 
-O script informa no terminal o parcial do processamento, mostrando o "bloco" (conjunto parcial) de linhas que está sendo convertido. Cada bloco contempla 100.000 linhas (registros) da base de dados.
+### Personalizando a Carga Automatizada
 
-## Tamanho das tabelas geradas (versão atualizada em 26/03/2019)
-Tabela | Tamanho do arquivo | Quantidade de linhas
------- | ------------------ | --------------------
-Empresas | Aprox. 12gb | 40.184.161
-CNAES secundárias | 1,18gb | 45.321.058 <sup>*</sup>
-Sócios | 1,71gb | 18.613.392
+É possível passar argumentos para a etapa de carga. Os argumentos fornecidos ao `executar_carga_completa.py` serão repassados diretamente para o `cnpj.py`.
 
-<sup>*</sup> Observar que esta quantidade de linhas não corresponde ao número de linhas referentes a CNAEs secundários no arquivo original, uma vez que no original todos os CNAEs secundários de uma determinada empresa estão na mesma linha, enquanto na versão convertida é gerada uma linha para cada CNAE secundário associado à empresa.
+**Exemplo:** Para não gerar índices no banco de dados ao final da carga.
+`python executar_carga_completa.py --noindex`
 
-## Como executar
-`python3 cnpj.py <caminho entrada> <tipo de saída:csv ou sqlite> <pasta saída> [--dir] [--noindex]`
+Consulte a seção do `cnpj.py` abaixo para ver todos os argumentos disponíveis.
 
-Caso a base seja disponibilizada em múltiplos arquivos zip, salvar em uma pasta, usá-la como `<caminho entrada>` e especificar o argumento `--dir`.
+---
 
-O argumento opcional `--noindex`, aplicável somente para saída sqlite, indica que **não** devem ser gerados índices automaticamente.
-A criação de índices é muito recomendada e essencial para a funcionalidade de consultas.
+## Etapas Manuais
 
-## Exemplos
-`python3 cnpj.py "data\F.K032001K.D90308" sqlite "data"`
+Se preferir, você pode executar cada etapa do processo manualmente.
 
-`python3 cnpj.py "data" sqlite "output" --dir`
+### 1. Download dos Dados
 
-`python3 cnpj.py "data\DADOS_ABERTOS_CNPJ.zip" sqlite "data" --noindex`
+O script `tools/download_empresas_novo.py` é responsável por baixar os arquivos de dados públicos do site da Receita Federal.
 
-## Separando arquivos CSV por estado ou municipio
+`python tools/download_empresas_novo.py`
 
-Após ter gerado o arquivo empresas.csv, é possível dividir por estado, ou por cidade
+Ele irá baixar todos os arquivos `.zip` para a pasta `tools/downloads_cnpj`, pulando arquivos que já existirem no local.
 
-### Requisitos
+### 2. Carga para SQLite
 
-`$ python3 -m pip install python-dotenv`
+O script `cnpj.py` foi atualizado para processar os arquivos `.zip` no novo formato CSV disponibilizado pela Receita Federal e carregá-los em um banco de dados SQLite.
 
-Para ambos os scripts é necessário informar a localização do arquivo `empresas.csv` no arquivo `.env`
+**Uso:**
+`python cnpj.py [<path_input> <output:sqlite> <path_output>] [--noindex]`
 
-`FILES_LOCATION=/media/Arquivos`
+**Funcionalidades:**
+- **Valores Padrão:** Se executado sem argumentos, o script assume os seguintes valores:
+  - Diretório de entrada: `tools/downloads_cnpj`
+  - Formato de saída: `sqlite`
+  - Diretório de saída: `output`
+- **Progresso Detalhado:** Durante a execução, o script exibe o total de registros lidos por arquivo e o total acumulado na tabela, fornecendo um feedback claro do progresso.
 
-Após isso basta executar os scripts:
+**Argumentos:**
+- `<path_input>`: Diretório contendo os arquivos `.zip` da RFB.
+- `<output:sqlite>`: Formato de saída. Atualmente, apenas 'sqlite' é suportado.
+- `<path_output>`: Diretório onde o banco de dados SQLite será salvo.
+- `[--noindex]`: Opcional. Não gera índices no banco de dados ao final.
 
-#### Para separar por UF:
+**Exemplos:**
+- **Usando valores padrão:**
+  `python cnpj.py`
+- **Especificando os caminhos:**
+  `python cnpj.py "dados_rfb" sqlite "output"`
 
-`python3 separar_csv_por_uf.py`
-
-#### Para separar por cidade:
-
-`python3 separar_csv_por_cidade.py`
-
+---
 # Consultas
 
 **Novidade!** Agora é possível fazer consultas que além de trazer empresas e sócios específicos, traz a rede de relacionamentos na profundidade desejada. Os resultados podem ser salvos em formato tabular e/ou em formatos variados de grafos de relacionamento, que podem ser visualizados de forma interativa no navegador ou abertos em softwares que suportem os formatos especificados, como o [Gephi](https://gephi.org/).
