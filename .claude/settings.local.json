@@ -4,7 +4,9 @@
       "Bash(move:*)",
       "Bash(.venvScriptspip install python-dotenv)",
       "Bash(.venv/Scripts/pip install:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(python:*)",
+      "Bash(mkdir:*)"
     ],
     "deny": [],
     "ask": []
