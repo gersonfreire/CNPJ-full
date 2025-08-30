@@ -12,14 +12,11 @@ class Settings(BaseSettings):
     STATIC_BEARER_TOKEN: str = "seu_token_secreto_aqui"
     
     # Banco de Dados
-    DATABASE_URL: str = "sqlite:///H:/dev/rfb/CNPJ-full/output/CNPJ_full.db"
+    DATABASE_URL: str = "sqlite:///./output/CNPJ_full.db"
     
     # SSL
     SSL_KEYFILE_PATH: Optional[str] = None
     SSL_CERTFILE_PATH: Optional[str] = None
 
     class Config:
-        env_file = "api/.env"
         env_file_encoding = "utf-8"
-
-settings = Settings()

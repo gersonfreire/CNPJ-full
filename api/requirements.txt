@@ -6,3 +6,4 @@ sqlalchemy
 pandas
 networkx
 python-multipart
+typer

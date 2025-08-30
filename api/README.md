@@ -41,10 +41,28 @@ A API é construída com FastAPI e é documentada automaticamente via Swagger UI
 
 ## Executando a API
 
-Com o ambiente virtual ativado e as dependências instaladas, inicie o servidor a partir da raiz do projeto (`CNPJ-full/`):
+Com o ambiente virtual ativado e as dependências instaladas, inicie o servidor usando o novo script de linha de comando. A partir da raiz do projeto (`CNPJ-full/`), execute:
 
 ```bash
-uvicorn api.main:app
+python api/main.py
+```
+
+O servidor usará o arquivo `api/.env` por padrão. 
+
+### Usando um arquivo .env customizado
+
+Você pode especificar um arquivo de configuração diferente usando a opção `--env` ou `-e`.
+
+```bash
+python api/main.py --env .env.production
+```
+
+### Ajuda
+
+Para ver todas as opções disponíveis, use `--help`.
+
+```bash
+python api/main.py --help
 ```
 
 O servidor estará disponível em `http://127.0.0.1:8000`.
