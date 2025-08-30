@@ -1,20 +1,27 @@
 import requests
 import json
+import os
+from dotenv import load_dotenv
+
+# Carrega variáveis do arquivo .env da subpasta conf
+script_dir = os.path.dirname(os.path.abspath(__file__))
+env_path = os.path.join(script_dir, "conf", ".env")
+load_dotenv(env_path)
 
 # --- Configurações ---
 # Endereço base da sua API (certifique-se de que o servidor está rodando)
-API_BASE_URL = "http://127.0.0.1:8000"
+API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000")
 
-# Cole aqui o mesmo token que você definiu no seu arquivo api/.env
-BEARER_TOKEN = "seu_token_secreto_aqui" 
+# Token de autenticação
+BEARER_TOKEN = os.getenv("BEARER_TOKEN", "seu_token_secreto_aqui")
 
 # --- Parâmetros da Consulta ---
 # A consulta SQL que você deseja executar
-sql_query = "SELECT cnpj, nome_fantasia, capital_social, situacao_cadastral FROM empresas WHERE uf = 'MG' ORDER BY capital_social DESC"
+sql_query = os.getenv("SQL_QUERY", "SELECT cnpj, nome_fantasia, capital_social, situacao_cadastral FROM empresas WHERE uf = 'MG' ORDER BY capital_social DESC")
 
 # Parâmetros de paginação
-page_number = 1
-items_per_page = 5
+page_number = int(os.getenv("PAGE_NUMBER", "1"))
+items_per_page = int(os.getenv("ITEMS_PER_PAGE", "5"))
 
 def query_api(sql: str, page: int, page_size: int):
     """Função para fazer a chamada à API e imprimir o resultado."""
