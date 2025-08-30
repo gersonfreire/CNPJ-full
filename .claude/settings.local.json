@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(move:*)"
+      "Bash(move:*)",
+      "Bash(.venvScriptspip install python-dotenv)",
+      "Bash(.venv/Scripts/pip install:*)",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": []
