@@ -4,8 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from typing import List, Any, Dict
 
-from app.core.config import Settings
-from app.main import get_settings
+from app.core.config import settings
 from app.security.auth import get_current_user
 
 router = APIRouter()
@@ -29,8 +28,7 @@ class PaginatedResponse(BaseModel):
             dependencies=[Depends(get_current_user)])
 def execute_query(query: SQLQuery, 
                   page: int = Query(1, ge=1, description="Número da página a ser retornada."), 
-                  page_size: int = Query(10, ge=1, le=200, description="Número de registros por página."),
-                  settings: Settings = Depends(get_settings)):
+                  page_size: int = Query(10, ge=1, le=200, description="Número de registros por página.")):
     """
     Executa uma consulta SQL **diretamente** no banco de dados SQLite e retorna os resultados de forma paginada.
 

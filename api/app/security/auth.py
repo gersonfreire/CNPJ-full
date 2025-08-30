@@ -1,11 +1,10 @@
-from fastapi import Security, HTTPException, status, Depends
+from fastapi import Security, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from app.main import get_settings
-from app.core.config import Settings
+from app.core.config import settings
 
 security = HTTPBearer()
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Security(security), settings: Settings = Depends(get_settings)):
+def get_current_user(credentials: HTTPAuthorizationCredentials = Security(security)):
     if not credentials or credentials.scheme != "Bearer" or credentials.credentials != settings.STATIC_BEARER_TOKEN:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

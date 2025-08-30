@@ -1,17 +1,17 @@
-import uvicorn
 import typer
-from fastapi import FastAPI, Depends
+import os
+import subprocess
+import sys
+
+# Adiciona o diretório do script ao sys.path para resolver ModuleNotFoundError
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from functools import lru_cache
 
-from app.core.config import Settings
+# As configurações são importadas DEPOIS que a variável de ambiente é potencialmente definida.
+from app.core.config import settings
 from app.api_v1.api import api_router
-
-# Dependência para obter as configurações
-# Usamos lru_cache para garantir que o arquivo .env seja lido apenas uma vez.
-@lru_cache
-def get_settings(env_file: str = "api/.env") -> Settings:
-    return Settings(_env_file=env_file)
 
 # Criação da aplicação FastAPI
 app = FastAPI(
@@ -44,38 +44,43 @@ cli = typer.Typer()
 @cli.command()
 def run(
     env_file: str = typer.Option(
-        "api/.env", 
+        None, 
         "--env", 
         "-e", 
         help="Caminho para o arquivo .env a ser usado."
     )
 ):
-    """Inicia o servidor da API FastAPI."""
+    """Inicia o servidor da API FastAPI usando Uvicorn."""
     
-    # Carrega as configurações a partir do arquivo .env especificado
-    settings = get_settings(env_file)
+    # Define a variável de ambiente que será lida pelo módulo de configuração.
+    # Isso precisa acontecer ANTES que qualquer módulo de 'app' seja importado.
+    if env_file:
+        os.environ["ENV_FILE"] = env_file
+        typer.echo(f"INFO:     Usando arquivo de configuração customizado: {env_file}")
+    else:
+        typer.echo("INFO:     Usando arquivo de configuração padrão.")
 
-    # Sobrescreve a dependência get_settings para usar o arquivo correto
-    # Isso garante que todos os endpoints usem as configurações carregadas pela CLI
-    app.dependency_overrides[get_settings] = lambda: get_settings(env_file)
+    # Constrói o comando para executar o Uvicorn
+    # Usar o import string "api.main:app" é crucial para o reload funcionar.
+    command = [
+        "uvicorn",
+        "api.main:app",
+        f"--host={settings.API_HOST}",
+        f"--port={settings.API_PORT}"
+    ]
+    if settings.API_RELOAD:
+        command.append("--reload")
 
-    typer.echo(f"INFO:     Usando arquivo de configuração: {env_file}")
-
-    ssl_params = {}
+    # Adiciona parâmetros SSL se definidos
     if settings.SSL_KEYFILE_PATH and settings.SSL_CERTFILE_PATH:
-        ssl_params["ssl_keyfile"] = settings.SSL_KEYFILE_PATH
-        ssl_params["ssl_certfile"] = settings.SSL_CERTFILE_PATH
+        command.append(f"--ssl-keyfile={settings.SSL_KEYFILE_PATH}")
+        command.append(f"--ssl-certfile={settings.SSL_CERTFILE_PATH}")
         typer.echo(f"INFO:     Rodando em HTTPS na porta {settings.API_PORT}")
     else:
-        typer.echo("INFO:     Certificados SSL não encontrados. Rodando em HTTP.")
+        typer.echo(f"INFO:     Rodando em HTTP na porta {settings.API_PORT}")
 
-    uvicorn.run(
-        app, # Passa o objeto app diretamente
-        host=settings.API_HOST,
-        port=settings.API_PORT,
-        reload=settings.API_RELOAD,
-        **ssl_params
-    )
+    # Executa o comando Uvicorn
+    subprocess.run(command)
 
 if __name__ == "__main__":
     cli()

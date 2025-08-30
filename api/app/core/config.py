@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
 from typing import Optional
+import os
 
 class Settings(BaseSettings):
     # Servidor
@@ -19,4 +20,10 @@ class Settings(BaseSettings):
     SSL_CERTFILE_PATH: Optional[str] = None
 
     class Config:
+        # Lê o caminho do arquivo .env da variável de ambiente 'ENV_FILE'.
+        # Se não for definida, usa 'api/.env' como padrão.
+        env_file = os.getenv("ENV_FILE", "api/.env")
         env_file_encoding = "utf-8"
+
+# A instância global de configurações é criada aqui, lendo a variável de ambiente.
+settings = Settings()
