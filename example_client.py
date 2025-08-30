@@ -125,6 +125,15 @@ def query_api(sql: str, page: int, page_size: int, api_base_url: str, bearer_tok
     
     print(f"--- Executando consulta na página {page} com {page_size} itens ---")
     
+    '''curl -X 'POST' \
+    'https://apivalida.monitor.eco.br:8002/api/v1/query?page=1&page_size=10' \
+    -H 'accept: application/json' \
+    -H 'Authorization: Bearer seu_token_secreto_aqui' \
+    -H 'Content-Type: application/json' \
+    -d '{
+    "sql": "select * from empresas"
+    }'''    
+    
     try:
         response = requests.post(endpoint_url, headers=headers, params=params, json=payload)
         
@@ -185,3 +194,4 @@ def main():
 
 if __name__ == "__main__":
     exit(main())
+
