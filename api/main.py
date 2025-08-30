@@ -2,6 +2,7 @@ import typer
 import os
 import sys
 import uvicorn
+from colorama import just_fix_windows_console
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -32,6 +33,9 @@ app = FastAPI(
     version="1.0.0",
     openapi_url="/api/v1/openapi.json"
 )
+
+# Fix Windows console to render ANSI escape sequences correctly
+just_fix_windows_console()
 
 # Middlewares - these do not depend on settings
 app.add_middleware(
